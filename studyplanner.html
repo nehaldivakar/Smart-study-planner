@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI Study Planner Ultra</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial;
+    background: #0f0f1a;
+    color: white;
+}
+
+h1 { text-align: center; }
+
+.container {
+    width: 95%;
+    margin: auto;
+}
+
+.grid {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.card {
+    background: #1e1e2f;
+    padding: 15px;
+    border-radius: 12px;
+    flex: 1;
+    min-width: 250px;
+}
+
+input, select, button {
+    padding: 8px;
+    margin: 5px;
+}
+
+.task {
+    background: #2d2d44;
+    padding: 8px;
+    margin: 5px;
+    border-radius: 6px;
+}
+
+.done {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+
+.progress {
+    height: 15px;
+    background: #333;
+    border-radius: 10px;
+}
+
+.bar {
+    height: 100%;
+    background: #00cec9;
+    width: 0%;
+}
+
+.timer {
+    font-size: 30px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📚 AI Study Planner ULTRA</h1>
+
+<div class="container">
+
+<div class="card">
+<input id="subject" placeholder="Subject">
+<select id="difficulty">
+<option value="1">Easy</option>
+<option value="2">Medium</option>
+<option value="3">Hard</option>
+</select>
+<input id="hours" type="number" placeholder="Hours">
+<button onclick="add()">Add</button>
+<button onclick="generate()">Generate Plan</button>
+</div>
+
+<div class="grid">
+
+<div class="card">
+<h3>📅 Plan</h3>
+<div id="plan"></div>
+<div class="progress"><div id="bar" class="bar"></div></div>
+</div>
+
+<div class="card">
+<h3>📊 Analytics</h3>
+<canvas id="chart"></canvas>
+</div>
+
+<div class="card">
+<h3>⏱ Pomodoro Timer</h3>
+<div class="timer" id="timer">25:00</div>
+<button onclick="startTimer()">Start</button>
+<button onclick="resetTimer()">Reset</button>
+</div>
+
+<div class="card">
+<h3>🔥 Streak</h3>
+<p id="streak">0 days</p>
+</div>
+
+</div>
+
+</div>
+
+<script>
+let subjects = JSON.parse(localStorage.getItem("subjects")) || [];
+let plan = [];
+let time = 1500;
+let timerInterval;
+
+// Add subject
+function add() {
+    const s = subject.value;
+    const d = parseInt(difficulty.value);
+    const h = parseInt(hours.value);
+
+    if (!s || !h) return;
+
+    subjects.push({s, d, h, completed:0});
+    localStorage.setItem("subjects", JSON.stringify(subjects));
+    alert("Added!");
+}
+
+// Generate AI plan
+function generate() {
+    plan = [];
+
+    subjects.forEach(sub => {
+        let weight = sub.d + (sub.completed === 0 ? 2 : 0);
+        let sessions = Math.ceil(sub.h / weight);
+
+        for (let i=0;i<sessions;i++){
+            plan.push({name: sub.s, done:false});
+        }
+    });
+
+    render();
+    updateChart();
+}
+
+// Render plan
+function render() {
+    let div = document.getElementById("plan");
+    div.innerHTML = "";
+
+    plan.forEach((p,i)=>{
+        div.innerHTML += `
+        <div class="task ${p.done?'done':''}">
+            ${p.name}
+            <button onclick="toggle(${i})">✔</button>
+        </div>`;
+    });
+
+    updateProgress();
+}
+
+// Toggle
+function toggle(i) {
+    plan[i].done = !plan[i].done;
+    render();
+}
+
+// Progress
+function updateProgress() {
+    let done = plan.filter(p=>p.done).length;
+    let percent = plan.length ? (done/plan.length)*100 : 0;
+    document.getElementById("bar").style.width = percent+"%";
+}
+
+// Chart
+let chart;
+function updateChart() {
+    let labels = subjects.map(s=>s.s);
+    let data = subjects.map(s=>s.h);
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(document.getElementById("chart"), {
+        type:"bar",
+        data:{
+            labels,
+            datasets:[{label:"Hours", data}]
+        }
+    });
+}
+
+// Timer
+function startTimer() {
+    if (timerInterval) return;
+
+    timerInterval = setInterval(()=>{
+        time--;
+        let m = Math.floor(time/60);
+        let s = time%60;
+        timer.innerText = `${m}:${s<10?'0':''}${s}`;
+
+        if (time<=0) {
+            clearInterval(timerInterval);
+            alert("Session Complete!");
+            updateStreak();
+        }
+    },1000);
+}
+
+function resetTimer() {
+    clearInterval(timerInterval);
+    time = 1500;
+    timer.innerText = "25:00";
+    timerInterval = null;
+}
+
+// Streak
+function updateStreak() {
+    let streak = localStorage.getItem("streak") || 0;
+    streak++;
+    localStorage.setItem("streak", streak);
+    document.getElementById("streak").innerText = streak + " days";
+}
+
+document.getElementById("streak").innerText =
+(localStorage.getItem("streak") || 0) + " days";
+</script>
+
+</body>
+</html>
